@@ -101,6 +101,9 @@ struct defaultOutputFormatEntry defaultoutputformats[] = {
   {"jpeg","AGG/JPEG","image/jpeg"},
   {"png8","AGG/PNG8","image/png; mode=8bit"},
   {"png24","AGG/PNG","image/png; mode=24bit"},
+#ifdef USE_GIF
+  {"gif","LIB/GIF","image/gif"},
+#endif
 #ifdef USE_CAIRO
   {"pdf","CAIRO/PDF","application/x-pdf"},
   {"svg","CAIRO/SVG","image/svg+xml"},
@@ -201,6 +204,19 @@ outputFormatObj *msCreateDefaultOutputFormat( mapObj *map,
     format->extension = msStrdup("jpg");
     format->renderer = MS_RENDER_WITH_AGG;
   }
+
+#ifdef USE_GIF
+
+  if( strcasecmp(driver,"LIB/GIF") == 0 ) {
+    if(!name) name="gif";
+    format = msAllocOutputFormat( map, name, driver );
+    format->mimetype = msStrdup("image/gif");
+    format->imagemode = MS_IMAGEMODE_RGB;
+    format->extension = msStrdup("gif");
+    format->renderer = MS_RENDER_WITH_AGG;
+  }
+
+#endif
 
 #if defined(USE_CAIRO)
   if( strcasecmp(driver,"CAIRO/PNG") == 0 ) {
