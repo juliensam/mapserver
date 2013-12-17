@@ -57,6 +57,18 @@ void png_write_data_to_buffer(png_structp png_ptr, png_bytep data, png_size_t le
   msBufferAppend(buffer,data,length);
 }
 
+int gif_write_data_to_stream(GifFileType * _gif, unsigned char *_buf, int _len)
+{
+    FILE *fp = _gif->UserData;
+    return msIO_fwrite(_buf, sizeof(char), _len, fp);
+}
+
+int gif_write_data_to_buffer(GifFileType  * _gif, unsigned char *_buf, int _len)
+{
+    bufferObj *buffer = _gif->UserData;
+    msBufferAppend(buffer, _buf, _len);
+}
+
 void png_flush_data(png_structp png_ptr)
 {
   /* do nothing */
@@ -672,13 +684,13 @@ int msSaveRasterBuffer(mapObj *map, rasterBufferObj *rb, FILE *stream,
     streamInfo info;
     info.fp = stream;
     info.buffer=NULL;
-    
+
     return saveAsJPEG(map, rb,&info,format);
   } else if(strcasestr(format->driver,"/gif")) {
     streamInfo info;
     info.fp = stream;
     info.buffer=NULL;
-    
+
     return saveAsGIF(map, rb,&info,format);
   } else {
       msSetError(MS_MISCERR,"unsupported image format\n", "msSaveRasterBuffer()");
@@ -801,8 +813,12 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
     ColorMapObject *ColorMap;
     GifRowType Line;
 
-    /* TODO: Change /tmp/todo to a custom write function or a file handle */
-    GifFile = EGifOpenFileHandle(info->fp);
+    /* TODO: Check if write_data_to_buffer works */
+    if (info->fp)
+        GifFile = EGifOpen(info->fp, (OutputFunc)gif_write_data_to_stream );
+    else
+        GifFile = EGifOpen(info->buffer, (OutputFunc)gif_write_data_to_buffer);
+
     if(GifFile == NULL)
     {
 #if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
@@ -877,7 +893,7 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
         msFree(qrb.data.palette.pixels);
         return MS_FAILURE;
     }
-	
+
 
     /* Dump out the image descriptor: */
     if (EGifPutImageDesc(GifFile,
@@ -923,7 +939,7 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
                    (int)ColorMap->Colors[color].Blue ==  b)
                     break;
             }
-            
+
             Line[col] = color;//get rb pixel color
         }
 
