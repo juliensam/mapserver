@@ -185,10 +185,10 @@ int msWMSSetTimePattern(const char *timepatternstring, char *timestring, int che
     /* multiple times (2004-09-21, 2004-09-22, ...) */
     /* and range(s) (2004-09-21/2004-09-25, 2004-09-27/2004-09-29) */
     atimes = msStringSplit(timestring, ',', &numtimes);
-    
+
     /* get the pattern to use */
-    if (numtimes>0) {      
-      patterns = msStringSplit(timepatternstring, ',', &numpatterns);      
+    if (numtimes>0) {
+      patterns = msStringSplit(timepatternstring, ',', &numpatterns);
       for (j=0; j<numtimes;++j) {
         ranges = msStringSplit(atimes[j],  '/', &numranges);
         for (k=0; k<numranges;++k) {
@@ -206,7 +206,7 @@ int msWMSSetTimePattern(const char *timepatternstring, char *timestring, int che
           }
           if (match == MS_FALSE) {
             msSetError(MS_WMSERR, "Time value %s given does not match the time format pattern.",
-                   "msWMSSetTimePattern", ranges[k]);            
+                   "msWMSSetTimePattern", ranges[k]);
             ret = MS_FAILURE;
             break;
           }
@@ -217,7 +217,7 @@ int msWMSSetTimePattern(const char *timepatternstring, char *timestring, int che
       }
 
       msFreeCharArray(patterns, numpatterns);
-      msFreeCharArray(atimes, numtimes);              
+      msFreeCharArray(atimes, numtimes);
 
     }
   }
@@ -233,12 +233,12 @@ int msWMSApplyTime(mapObj *map, int version, char *time, char *wms_exception_for
   int i=0;
   layerObj *lp = NULL;
   const char *timeextent, *timefield, *timedefault, *timpattern = NULL;
-    
+
   if (map) {
 
     timpattern = msOWSLookupMetadata(&(map->web.metadata), "MO",
                                      "timeformat");
-    
+
     for (i=0; i<map->numlayers; i++) {
       lp = (GET_LAYER(map, i));
       if (lp->status != MS_ON && lp->status != MS_DEFAULT)
@@ -275,10 +275,10 @@ int msWMSApplyTime(mapObj *map, int version, char *time, char *wms_exception_for
              Last argument is set to TRUE (checkonly) to not trigger the
              patterns info setting.. to only apply the wms_timeformats on the
              user request values, not the mapfile values. */
-          if (timpattern && time && strlen(time) > 0) 
-            if (msWMSSetTimePattern(timpattern, time, MS_TRUE) == MS_FAILURE) 
+          if (timpattern && time && strlen(time) > 0)
+            if (msWMSSetTimePattern(timpattern, time, MS_TRUE) == MS_FAILURE)
               return msWMSException(map, version,"InvalidDimensionValue", wms_exception_format);
-          
+
           /* check if given time is in the range */
           if (msValidateTimeValue(time, timeextent) == MS_FALSE) {
             if (timedefault == NULL) {
@@ -310,7 +310,7 @@ int msWMSApplyTime(mapObj *map, int version, char *time, char *wms_exception_for
     if (timpattern && time && strlen(time) > 0)
       if (msWMSSetTimePattern(timpattern, time, MS_FALSE) == MS_FAILURE)
         return msWMSException(map, version,"InvalidDimensionValue", wms_exception_format);
-    
+
   }
 
   return MS_SUCCESS;
@@ -1014,7 +1014,7 @@ int msWMSLoadGetMapParams(mapObj *map, int nVersion,
       map->extent.maxy = atof(tokens[3]);
 
       msFreeCharArray(tokens, n);
-      
+
       /*for wms 1.3.0 we will do the validation of the bbox after all parameters
        are read to account for the axes order*/
       if (nVersion < OWS_1_3_0) {
@@ -1062,7 +1062,8 @@ int msWMSLoadGetMapParams(mapObj *map, int nVersion,
                strncasecmp(format->driver, "CAIRO/", 6) != 0 &&
                strncasecmp(format->driver, "OGL/", 4) != 0 &&
                strncasecmp(format->driver, "KML", 3) != 0 &&
-               strncasecmp(format->driver, "KMZ", 3) != 0)) {
+               strncasecmp(format->driver, "KMZ", 3) != 0 &&
+               strncasecmp(format->driver, "LIB", 3) != 0)) {
             msSetError(MS_IMGERR,
                        "Unsupported output format (%s).",
                        "msWMSLoadGetMapParams()",
@@ -2379,7 +2380,7 @@ int msDumpLayer(mapObj *map, layerObj *lp, int nVersion, const char *script_url_
               }
             }
             group_layers =(int *)msSmallRealloc(group_layers, sizeof(int)*num_layers);
-            
+
             if (msLegendCalcSize(map, 1, &size_x, &size_y,  group_layers, num_layers, NULL, 1) == MS_SUCCESS) {
               const char *styleName = NULL;
               char *pszEncodedStyleName = NULL;
@@ -2398,6 +2399,10 @@ int msDumpLayer(mapObj *map, layerObj *lp, int nVersion, const char *script_url_
 #if defined USE_JPEG
               if (!mimetype)
                 mimetype = msEncodeHTMLEntities("image/jpeg");
+#endif
+#if defined USE_GIF
+            if (!mimetype)
+                mimetype = msEncodeHTMLEntities("image/gif");
 #endif
               if (!mimetype)
                 mimetype = msEncodeHTMLEntities(MS_IMAGE_MIME_TYPE(map->outputformat));
@@ -2886,6 +2891,9 @@ int msWMSGetCapabilities(mapObj *map, int nVersion, cgiRequestObj *req, owsReque
 #endif
 #if defined USE_JPEG
                            "<JPEG />"
+#endif
+#if defined USE_GIF
+                           "<GIF />"
 #endif
                            "<SVG />"
                            , NULL);
@@ -3789,7 +3797,7 @@ int msDumpResult(mapObj *map, int bFormatHtml, int nVersion, char *wms_exception
 
         }
       }
- 
+
       msFreeShape(&shape);
       numresults++;
     }
@@ -4523,7 +4531,7 @@ this request. Check wms/ows_enable_request settings.",
   }
   msApplyOutputFormat(&(map->outputformat), psFormat, MS_NOOVERRIDE,
       MS_NOOVERRIDE, MS_NOOVERRIDE );
-  
+
   if ( psRule == NULL || nLayers > 1) {
     if ( psScale != NULL ) {
       /* Scale-dependent legend. map->scaledenom will be calculated in msDrawLegend */

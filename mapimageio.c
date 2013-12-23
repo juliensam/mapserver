@@ -861,9 +861,9 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
 
     /* Assignt the colors to the gif_lib colormap object */
     int numEntries = qrb.data.palette.num_entries;
-    if(numEntries % 2 == 1)
-        numEntries++;
-    if ((ColorMap = MakeMapObject(256, NULL)) == NULL)
+    // We need to make sure numEntries is a power of two
+    numEntries = 1 << BitSize(numEntries);
+    if ((ColorMap = MakeMapObject(numEntries, NULL)) == NULL)
     {
 #if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
         msSetError(MS_MISCERR,"Unable to create ColorMap?: %s - %d","saveAsGIF()", gif_error_msg(image->Error), qrb.data.palette.num_entries);
@@ -921,26 +921,44 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
         return MS_FAILURE;
     }
 
+    int found;
     /* Add each line */
     for(row=0; row<rb->height; row++)
     {
         /* Build a line */
+        unsigned char *r,*g,*b;
+        r=rb->data.rgba.r+row*rb->data.rgba.row_step;
+        g=rb->data.rgba.g+row*rb->data.rgba.row_step;
+        b=rb->data.rgba.b+row*rb->data.rgba.row_step;
+
         for(col=0; col<rb->width; col++)
         {
+
             /* Find the color in the ColorMap */
-            unsigned char *r,*g,*b;
-            r=rb->data.rgba.r+row*(rb->data.rgba.row_step*(col+1));
-            g=rb->data.rgba.g+row*(rb->data.rgba.row_step*(col+1));
-            b=rb->data.rgba.b+row*(rb->data.rgba.row_step*(col+1));
             for(color=0; color<qrb.data.palette.num_entries; color++)
             {
-                if((int)ColorMap->Colors[color].Red ==  r &&
-                   (int)ColorMap->Colors[color].Green ==  g &&
-                   (int)ColorMap->Colors[color].Blue ==  b)
+                if((int)ColorMap->Colors[color].Red ==  *r &&
+                   (int)ColorMap->Colors[color].Green ==  *g &&
+                   (int)ColorMap->Colors[color].Blue ==  *b)
+                {
+                    found = MS_TRUE;
                     break;
+                }
+            }
+
+            if (!found)
+            {
+                msSetError(MS_MISCERR, "Didn't find color in ColorMap", "saveAsGIF()");
+                msFree(Line);
+                msFree(qrb.data.palette.pixels);
+                return MS_FAILURE;
             }
 
             Line[col] = color;//get rb pixel color
+
+            r+=rb->data.rgba.pixel_step;
+            g+=rb->data.rgba.pixel_step;
+            b+=rb->data.rgba.pixel_step;
         }
 
         if (EGifPutLine(GifFile, Line, rb->width) == GIF_ERROR)
