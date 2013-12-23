@@ -811,7 +811,6 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
     GifFileType *GifFile;
     int i, color, col, row;
     ColorMapObject *ColorMap;
-    GifRowType Line;
 
     /* TODO: Check if write_data_to_buffer works */
     if (info->fp)
@@ -861,9 +860,9 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
 
     /* Assignt the colors to the gif_lib colormap object */
     int numEntries = qrb.data.palette.num_entries;
-    if(numEntries % 2 == 1)
-        numEntries++;
-    if ((ColorMap = MakeMapObject(256, NULL)) == NULL)
+    // We need to make sure numEntries is a power of two
+    numEntries = 1 << BitSize(numEntries);
+    if ((ColorMap = MakeMapObject(numEntries, NULL)) == NULL)
     {
 #if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
         msSetError(MS_MISCERR,"Unable to create ColorMap?: %s - %d","saveAsGIF()", gif_error_msg(image->Error), qrb.data.palette.num_entries);
@@ -873,6 +872,7 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
         msFree(qrb.data.palette.pixels);
         return MS_FAILURE;
     }
+
     for(i=0; i<qrb.data.palette.num_entries; i++)
     {
         ColorMap->Colors[i].Red = qrb.data.palette.palette[i].r;
@@ -909,56 +909,22 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
     }
 
     /* Step 4: Write the gif content, line by line */
-    /* Allocate one scan line to be used for all image.			     */
-    if ((Line = (GifRowType) malloc(sizeof(GifPixelType) * rb->width)) == NULL)
-    {
-#if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
-        msSetError(MS_MISCERR,"Unable to create GIF Line?: %s","saveAsGIF()", gif_error_msg(image->Error));
-#else
-        msSetError(MS_MISCERR,"Unable to create GIF Line?: %s","saveAsGIF()", gif_error_msg());
-#endif
-        msFree(qrb.data.palette.pixels);
-        return MS_FAILURE;
-    }
-
-    /* Add each line */
     for(row=0; row<rb->height; row++)
     {
-        /* Build a line */
-        for(col=0; col<rb->width; col++)
+        if (EGifPutLine(GifFile, qrb.data.palette.pixels+row*qrb.width, qrb.width) == GIF_ERROR)
         {
-            /* Find the color in the ColorMap */
-            unsigned char *r,*g,*b;
-            r=rb->data.rgba.r+row*(rb->data.rgba.row_step*(col+1));
-            g=rb->data.rgba.g+row*(rb->data.rgba.row_step*(col+1));
-            b=rb->data.rgba.b+row*(rb->data.rgba.row_step*(col+1));
-            for(color=0; color<qrb.data.palette.num_entries; color++)
-            {
-                if((int)ColorMap->Colors[color].Red ==  r &&
-                   (int)ColorMap->Colors[color].Green ==  g &&
-                   (int)ColorMap->Colors[color].Blue ==  b)
-                    break;
-            }
-
-            Line[col] = color;//get rb pixel color
-        }
-
-        if (EGifPutLine(GifFile, Line, rb->width) == GIF_ERROR)
-        {
-#if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
-        msSetError(MS_MISCERR,"Unable to write GIF Line?: %s","saveAsGIF()", gif_error_msg(image->Error));
-#else
-        msSetError(MS_MISCERR,"Unable to write GIF Line?: %s","saveAsGIF()", gif_error_msg());
-#endif
-        msFree(qrb.data.palette.pixels);
-        msFree(Line);
-        return MS_FAILURE;
+            #if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5
+                msSetError(MS_MISCERR,"Unable to write GIF Line?: %s","saveAsGIF()", gif_error_msg(image->Error));
+            #else
+                msSetError(MS_MISCERR,"Unable to write GIF Line?: %s","saveAsGIF()", gif_error_msg());
+            #endif
+                msFree(qrb.data.palette.pixels);
+                return MS_FAILURE;
         }
     }
 
     /* Step 5: Close file and write footer */
     msFree(qrb.data.palette.pixels);
-    msFree(Line);
     if (EGifCloseFile(GifFile) == GIF_ERROR)
     {
 #if defined GIFLIB_MAJOR && GIFLIB_MAJOR >= 5

@@ -400,6 +400,10 @@ int msLoadMapContextLayerFormat(CPLXMLNode *psFormat, layerObj *layer)
     strcasecmp(pszValue, "image/jpeg") == 0 ||
     strcasecmp(pszValue, "JPEG") == 0 ||
 #endif
+#if !(defined USE_GIF)
+    strcasecmp(pszValue, "image/gif") == 0 ||
+    strcasecmp(pszValue, "GIF") == 0 ||
+#endif
     0 ) {
     char **papszList=NULL;
     int i, numformats=0;

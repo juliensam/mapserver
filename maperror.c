@@ -84,7 +84,7 @@ static char *ms_errorCodes[MS_NUMERRORCODES] = {"",
     "OWS error.",
     "OpenGL renderer error.",
     "Renderer error.",
-    "V8 engine error."                                                
+    "V8 engine error."
                                                };
 #ifndef USE_THREAD
 
@@ -505,6 +505,9 @@ char *msGetVersion()
 #endif
 #if (defined USE_JPEG)
   strcat(version, " OUTPUT=JPEG");
+#endif
+#if (defined USE_GIF)
+  strcat(version, " OUTPUT=GIF");
 #endif
 #ifdef USE_KML
   strcat(version, " OUTPUT=KML");

@@ -293,6 +293,10 @@ static int msBuildWMSLayerURLBase(mapObj *map, layerObj *lp,
           || strcasecmp(papszTok[i], "JPEG")
           || strcasecmp(papszTok[i], "image/jpeg")
 #endif
+#if defined USE_GIF
+          || strcasecmp(papszTok[i], "GIF")
+          || strcasecmp(papszTok[i], "image/gif")
+#endif
          ) {
         pszFormat = papszTok[i];
       }
