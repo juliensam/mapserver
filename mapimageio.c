@@ -894,6 +894,11 @@ int saveAsGIF(mapObj *map,rasterBufferObj *rb, streamInfo *info, outputFormatObj
         return MS_FAILURE;
     }
 
+    if(map->transparent == MS_ON)
+    {
+        GifByteType extentionblock[4] = {0x01, 0x00, 0x00, 0x00};
+        EGifPutExtension(GifFile, 0xf9, 4, &extentionblock);
+    }
 
     /* Dump out the image descriptor: */
     if (EGifPutImageDesc(GifFile,
